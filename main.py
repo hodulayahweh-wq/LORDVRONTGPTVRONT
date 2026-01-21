@@ -2,95 +2,67 @@ import os
 import uuid
 import json
 import asyncio
-import random
 from datetime import datetime
 from aiohttp import web
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
-# --- ⚙️ AYARLAR ---
-# Render'da Environment Variables kısmına eklemeyi unutma!
-TOKEN = "8366688933:AAHXaRMmP-z2ejCrQXTXhVYXxPERiaR6I0o"
+# --- 🔐 GÜVENLİK VE AYARLAR ---
+TOKEN = os.getenv("BOT_TOKEN")
 BASE_URL = "https://lordageichatsohbet.onrender.com"
 KANAL_ID = "@lordsystemv3"
 ADMIN_USER = "@LordDestekHat"
-PORT = int(os.environ.get("PORT", 8080))
-
-# --- 🔐 GÜVENLİK POLİTİKASI ---
-SECURITY_POLICY = (
-    "🛡️ **Lord System Güvenlik Politikası**\n\n"
-    "• API anahtarları kişiye özeldir; tespiti halinde banlanır.\n"
-    "• Illegal içerik, spam veya aşırı yüklenme yasaktır.\n"
-    "• @lordsystemv3 kanalından ayrılanların keyleri iptal edilir.\n"
-    "• Gizliliğiniz bizim için esastır; veriler şifreli tutulur.\n"
-    "• Destek: @LordDestekHat"
-)
+# Render portu dinamik olarak atar, bulamazsa 10000 varsayılanı kullanır.
+PORT = int(os.environ.get("PORT", 10000))
 
 # --- 🤖 MODELLER ---
 MODELLER = {
     "video_ai": "🎬 Lord Video-AI (Sinematik)",
-    "image_ai": "🖼️ Lord Image-AI (Görsel)",
-    "chat_sohbet": "💬 Lord Chat (400k Dataset)",
-    "voice_ai": "🎙️ Lord Voice-AI (Ses)"
+    "image_ai": "🖼️ Lord Image-AI (HD)",
+    "chat_sohbet": "💬 Lord Chat (400k Veri)",
+    "voice_ai": "🎙️ Lord Voice-AI (Ses Klon)"
 }
 
 # --- 📂 VERİTABANI YÖNETİMİ ---
 def load_db():
-    if not os.path.exists("keys.json"):
-        with open("keys.json", "w") as f: json.dump({}, f)
-    with open("keys.json", "r") as f: return json.load(f)
+    try:
+        if not os.path.exists("keys.json") or os.stat("keys.json").st_size == 0:
+            with open("keys.json", "w") as f: json.dump({}, f)
+        with open("keys.json", "r") as f: return json.load(f)
+    except:
+        return {}
 
 def save_db(data):
-    with open("keys.json", "w") as f: json.dump(data, f, indent=4)
+    with open("keys.json", "w") as f:
+        json.dump(data, f, indent=4)
 
-# --- 🌐 API ENDPOINT (İstekleri Okuyan Bölüm) ---
+# --- 🌐 API SUNUCUSU (WEB ENDPOINT) ---
 async def handle_api(request):
     key = request.query.get("key")
     model = request.query.get("model")
-    query = request.query.get("q", "Merhaba Lord!")
-
-    db = load_db()
-
-    if key not in db:
-        return web.json_response({"hata": "Yetkisiz Erişim", "mesaj": "API Key geçersiz!"}, status=403)
-
-    # API Yanıt Modeli
-    result_data = {
-        "durum": "aktif",
-        "tarih": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-        "istenen_model": MODELLER.get(model, "Bilinmeyen Model"),
-        "sorgu": query,
-        "cevap": f"Lord {model} motoru başarıyla yanıt verdi. Veri işlendi."
-    }
+    query = request.query.get("q", "Merhaba")
     
-    return web.json_response(result_data)
+    db = load_db()
+    if not key or key not in db:
+        return web.json_response({"hata": "Erişim Reddedildi", "mesaj": "Geçersiz API Anahtarı."}, status=403)
+    
+    return web.json_response({
+        "status": "success",
+        "model": MODELLER.get(model, "Genel"),
+        "cevap": f"Lord {model} servisi isteğinizi işledi: {query}"
+    })
 
-# --- 💬 TELEGRAM BOT MANTIĞI ---
-async def check_sub(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    try:
-        member = await context.bot.get_chat_member(KANAL_ID, user_id)
-        if member.status in ["left", "kicked"]: return False
-        return True
-    except: return False
-
+# --- 💬 TELEGRAM BOT KOMUTLARI ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not await check_sub(update, context):
-        btn = [[InlineKeyboardButton("📢 Kanala Katıl", url=f"https://t.me/{KANAL_ID.replace('@','')}")]]
-        await update.message.reply_text(f"⚠️ **Erişim Engellendi!**\nSistemi kullanmak için {KANAL_ID} kanalımıza katılmalısın.", 
-                                       reply_markup=InlineKeyboardMarkup(btn), parse_mode="Markdown")
-        return
-
     keyboard = [
         [InlineKeyboardButton("🚀 Modelleri Listele", callback_data="list_models")],
-        [InlineKeyboardButton("🛡️ Güvenlik Politikası", callback_data="policy")],
-        [InlineKeyboardButton("🆘 Destek Hattı", url=f"https://t.me/{ADMIN_USER.replace('@','')}")]
+        [InlineKeyboardButton("🆘 Destek & İletişim", url=f"https://t.me/{ADMIN_USER.replace('@','')}")]
     ]
     await update.message.reply_text(
-        f"👑 **Lord System V8 API Hub**\n\n"
-        f"📍 Endpoint: `{BASE_URL}`\n"
-        f"👤 Sahip: {ADMIN_USER}\n\n"
-        "İstediğin yapay zeka servisini seç ve API anahtarını anında al!",
+        f"👑 **Lord System V11 Dashboard**\n\n"
+        f"📍 Sunucu: `{BASE_URL}`\n"
+        f"📢 Kanal: {KANAL_ID}\n\n"
+        "Yapay zeka modellerini kullanmak için bir seçenek belirleyin:",
         reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown"
     )
 
@@ -98,48 +70,59 @@ async def handle_callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
-    if query.data == "policy":
-        await query.edit_message_text(SECURITY_POLICY, parse_mode="Markdown")
-    
-    elif query.data == "list_models":
+    if query.data == "list_models":
         kb = [[InlineKeyboardButton(name, callback_data=f"gen_{mid}")] for mid, name in MODELLER.items()]
-        await query.edit_message_text("🛠 **Aktif Modeller**\nKey üretmek için birini seç:", reply_markup=InlineKeyboardMarkup(kb))
+        await query.edit_message_text("🛠 **Lütfen model seçin:**", reply_markup=InlineKeyboardMarkup(kb))
 
     elif query.data.startswith("gen_"):
         mid = query.data.replace("gen_", "")
-        # OTOMATİK KEY ÜRETİMİ
-        new_key = f"LORD-{mid[:3].upper()}-{uuid.uuid4().hex[:8].upper()}"
+        new_key = f"LORD-{uuid.uuid4().hex[:8].upper()}"
         
         db = load_db()
-        db[new_key] = {"user": query.from_user.id, "model": mid, "created": str(datetime.now())}
+        db[new_key] = {"user": query.from_user.id, "model": mid, "time": str(datetime.now())}
         save_db(db)
 
-        res = (f"✅ **API Key Başarıyla Üretildi!**\n\n"
-               f"📁 Servis: `{MODELLER[mid]}`\n"
-               f"🔑 Key: `{new_key}`\n\n"
-               f"🔗 **API Linkin:**\n`{BASE_URL}/api?key={new_key}&model={mid}&q=sorgun`")
+        res = (f"✅ **API Key Hazır!**\n\n"
+               f"🔑 Key: `{new_key}`\n"
+               f"📂 Model: {MODELLER[mid]}\n\n"
+               f"🔗 **API URL:**\n`{BASE_URL}/api?key={new_key}&model={mid}&q=Lord`")
         await query.edit_message_text(res, parse_mode="Markdown")
 
-# --- 🚀 ANA ÇALIŞTIRICI ---
+# --- 🚀 RENDER ANA ÇALIŞTIRICI ---
 async def main():
-    # Render API Sunucusu Başlatma
-    api_app = web.Application()
-    api_app.router.add_get("/api", handle_api)
-    runner = web.AppRunner(api_app)
+    if not TOKEN:
+        print("❌ HATA: 'BOT_TOKEN' Environment Variable bulunamadı!")
+        return
+
+    # 1. API Sunucusunu Port Dinlemesiyle Başlat (Render Sağlığı İçin)
+    server = web.Application()
+    server.router.add_get("/api", handle_api)
+    # Render'ın "Health Check" yapabilmesi için ana dizine bir yanıt ekleyelim
+    server.router.add_get("/", lambda r: web.Response(text="Lord System Online ✅"))
+    
+    runner = web.AppRunner(server)
     await runner.setup()
     await web.TCPSite(runner, "0.0.0.0", PORT).start()
+    print(f"✅ Web Sunucusu Port {PORT} üzerinde aktif.")
 
-    # Telegram Bot Başlatma
+    # 2. Bot Uygulamasını Kur
     bot_app = Application.builder().token(TOKEN).build()
     bot_app.add_handler(CommandHandler("start", start))
     bot_app.add_handler(CallbackQueryHandler(handle_callbacks))
 
-    print(f"✅ LORD SYSTEM AKTİF! PORT: {PORT}")
-    
+    # 3. Botu Polling Modunda Başlat
     async with bot_app:
         await bot_app.initialize()
+        await bot_app.start()
+        print("✅ Bot Polling Başlatıldı...")
         await bot_app.updater.start_polling()
-        await asyncio.Event().wait()
+        
+        # Render'ın botu kapatmaması için sonsuz döngü
+        while True:
+            await asyncio.sleep(3600)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        print(f"🚨 KRİTİK HATA: {e}")
