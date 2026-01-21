@@ -2,13 +2,14 @@ import os
 import sqlite3
 import uuid
 import asyncio
-import random
+import requests
+import json
 from datetime import datetime
 from aiohttp import web
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# --- ⚙️ KONFİGÜRASYON ---
+# --- ⚙️ LORD V200 KONFİGÜRASYON ---
 TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = 8258235296
 PORT = int(os.environ.get("PORT", 10000))
@@ -17,135 +18,122 @@ BASE_URL = "https://lordageichatsohbet.onrender.com"
 KANAL_URL = "https://t.me/lordsystemv3"
 DESTEK_URL = "https://t.me/LordDestekHat"
 
-# --- 📁 AKILLI VERİTABANI ---
+# --- 📁 DATABASE SİSTEMİ ---
 def init_db():
-    conn = sqlite3.connect('lord_singularity.db')
+    conn = sqlite3.connect('lord_v200_brain.db')
     c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS users 
-                 (id TEXT PRIMARY KEY, balance INTEGER, mode TEXT, status TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS keys 
-                 (key TEXT PRIMARY KEY, user_id TEXT)''')
+    c.execute("CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, balance INTEGER)")
+    c.execute("CREATE TABLE IF NOT EXISTS keys (key TEXT PRIMARY KEY, user_id TEXT)")
     conn.commit()
     conn.close()
 
 init_db()
 
-# --- 🧠 ULTRA GERÇEK AI MOTORU (NEURAL CORE) ---
-async def singularity_ai_engine(query):
-    q = query.lower()
-    
-    # 📝 1. PROFESYONEL KODLAMA MODÜLÜ
-    if any(word in q for word in ["kodla", "python", "yazılım", "bot yap", "script"]):
-        code_samples = [
-            "import telebot\n# Lord Singularity Pro-Coder\nbot = telebot.TeleBot('TOKEN')\n\n@bot.message_handler(func=lambda m: True)\ndef lord_reply(m):\n    bot.reply_to(m, 'Neural Core Active')\n\nbot.infinity_polling()",
-            "def advanced_analysis(data):\n    # Ultra Logic Processing\n    processed = [pow(x, 2) for x in data if x > 0]\n    return f'Result: {processed}'",
-            "import asyncio\nasync def main_engine():\n    print('Lord System Booting...')\nasyncio.run(main_engine())"
-        ]
-        return (
-            "🚀 **Lord Neural Coder Devreye Girdi**\n\n"
-            "İsteğiniz üzerine optimize edilmiş, yüksek performanslı kod bloğu hazırlandı:\n\n"
-            f"```python\n{random.choice(code_samples)}\n```\n"
-            "*(Bu kod Lord V100 yapay sinir ağları tarafından üretilmiştir.)*"
-        )
-
-    # 🌍 2. GLOBAL VERİ VE ANALİZ MODÜLÜ
-    if any(word in q for word in ["nedir", "kimdir", "bilgi", "analiz"]):
-        prefixes = ["Küresel Veri Analizi:", "İmparatorluk Raporu:", "Deep Web Tarama Sonucu:"]
-        return (
-            f"🔍 **{random.choice(prefixes)}**\n\n"
-            f"'{query}' sorgusu üzerine yapılan derinlemesine taramada, konunun dünya genelindeki stratejik etkileri incelendi. "
-            "Veri setleri, bu durumun modern endüstride %98'lik bir korelasyon ile yeni bir trend başlattığını gösteriyor. "
-            "Lord protokolleri bu bilgiyi doğrulamıştır."
-        )
-
-    # 💬 3. GERÇEK ASİSTAN MODU (CHATGPT STİLİ)
-    if any(word in q for word in ["selam", "nasılsın", "kimsin"]):
-        return (
-            "Selam Lord! Ben Lord System V100. ChatGPT mimarisine benzer bir mantıksal işlemci ile çalışıyorum. "
-            "Sizin için kod yazabilir, dünya verilerini analiz edebilir veya imparatorluğunuzu yönetmenize yardımcı olabilirim. "
-            "Bugün hangi devasa projeyi başlatıyoruz?"
-        )
-
-    # Varsayılan Zeki Yanıt
-    return (
-        f"✨ **Lord AI Singularity Yanıtı:**\n\n"
-        f"'{query}' talebi sinir ağlarımda işlendi. Analizlerim, bu konunun gelecekteki Lord ekosistemine "
-        "doğrudan entegre edilebileceğini öngörüyor. İşlem başarıyla sonuçlandırıldı."
-    )
+# --- 🧠 GERÇEK AI BEYNİ (ChatGPT / DeepSeek API) ---
+async def get_real_ai_brain(user_query):
+    """
+    Bu fonksiyon statik metin üretmez. 
+    Gerçek bir AI sunucusuna (Blackbox/GPT-4) bağlanır.
+    """
+    try:
+        # Gerçek zamanlı AI isteği (Sınırsız ve Profesyonel Kodlama Destekli)
+        url = "https://api.blackbox.ai/api/chat"
+        payload = {
+            "messages": [{"role": "user", "content": user_query}],
+            "model": "deepseek-v3", # En iyi kod yazan ve mantık kuran model
+            "max_tokens": 4096
+        }
+        
+        headers = {"Content-Type": "application/json"}
+        
+        # İstek gönderiliyor (Gerçek Beyin Bağlantısı)
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
+        
+        if response.status_code == 200:
+            # Yanıt metnini ayıkla
+            data = response.text
+            # Blackbox bazen ham metin döndürür, bazen json.
+            try:
+                json_res = response.json()
+                return json_res.get("choices", [{}])[0].get("message", {}).get("content", "Yanıt alınamadı.")
+            except:
+                return data # Ham metin dönerse
+        else:
+            return "⚠️ Lord AI Sunucusu şu an yoğun. Lütfen tekrar deneyin."
+            
+    except Exception as e:
+        return f"🚨 Sistem Hatası: {str(e)}"
 
 # --- 🔗 PROFESYONEL BUTONLAR ---
-def pro_markup():
+def pro_buttons():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("📢 Kanalımız", url=KANAL_URL),
          InlineKeyboardButton("🛠️ Destek Hattı", url=DESTEK_URL)]
     ])
 
-# --- 🌐 SINGULARITY API GATEWAY ---
+# --- 🌐 ULTRA PROFESYONEL API ---
 async def handle_api(request):
     key = request.query.get("key")
     q = request.query.get("q")
     
     if not key or not q:
-        return web.json_response({"error": "Parametreler eksik!"}, status=400)
+        return web.json_response({"error": "Eksik parametre!"}, status=400)
 
-    conn = sqlite3.connect('lord_singularity.db')
+    conn = sqlite3.connect('lord_v200_brain.db')
     c = conn.cursor()
     c.execute("SELECT user_id FROM keys WHERE key=?", (key,))
-    k_res = c.fetchone()
+    key_res = c.fetchone()
     
-    if not k_res:
+    if not key_res:
         conn.close()
         return web.json_response({"error": "Geçersiz Key!"}, status=403)
     
-    uid = k_res[0]
+    uid = key_res[0]
     c.execute("SELECT balance FROM users WHERE id=?", (uid,))
-    u_res = c.fetchone()
+    user = c.fetchone()
     
-    if not u_res or u_res[0] <= 0:
+    if not user or user[0] <= 0:
         conn.close()
-        return web.json_response({"error": "Bakiye yetersiz!"}, status=402)
+        return web.json_response({"error": "Bakiye bitti!"}, status=402)
 
-    # Bakiye Düş ve AI Yanıtı Üret
-    new_bal = u_res[0] - 1
-    c.execute("UPDATE users SET balance=? WHERE id=?", (new_bal, uid))
+    # Bakiye Düş
+    c.execute("UPDATE users SET balance = balance - 1 WHERE id=?", (uid,))
     conn.commit()
     conn.close()
 
-    ai_resp = await singularity_ai_engine(q)
+    # GERÇEK AI BEYNİNDEN CEVAP AL
+    real_response = await get_real_ai_brain(q)
 
     return web.json_response({
         "status": "success",
-        "engine": "Lord V100 Singularity",
+        "engine": "Lord V200 Real Brain",
         "query": q,
-        "response": ai_resp,
-        "remaining_balance": new_bal,
+        "response": real_response,
+        "remaining_balance": user[0] - 1,
         "links": {"channel": KANAL_URL, "support": DESTEK_URL}
     })
 
 # --- 🤖 BOT MANTIĞI ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     uid = str(update.effective_user.id)
-    conn = sqlite3.connect('lord_singularity.db')
+    conn = sqlite3.connect('lord_v200_brain.db')
     c = conn.cursor()
-    c.execute("SELECT balance FROM users WHERE id=?", (uid,))
-    if not c.fetchone():
-        c.execute("INSERT INTO users VALUES (?, ?, ?, ?)", (uid, 100, "Elite", "active"))
-        conn.commit()
+    c.execute("INSERT OR IGNORE INTO users VALUES (?, ?)", (uid, 150)) # 150 Jeton Başlangıç
+    conn.commit()
     conn.close()
 
     kb = [[KeyboardButton("🤖 AI Chat"), KeyboardButton("💰 Bakiye")], [KeyboardButton("🔑 API & Profil")]]
-    await update.message.reply_text("👑 **Lord V100: The Singularity**\nGerçek AI motoru senin için aktif.", 
-                                   reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True))
+    await update.message.reply_text("👑 **Lord System V200: Gerçek Zeka Aktif**\n"
+                                   "Şu an gerçek bir LLM (ChatGPT/DeepSeek) beynine bağlıyım. "
+                                   "İstediğin her şeyi kodlayabilirim.", reply_markup=ReplyKeyboardMarkup(kb, resize_keyboard=True))
 
 async def msg_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     uid = str(update.effective_user.id)
     
-    conn = sqlite3.connect('lord_singularity.db')
+    conn = sqlite3.connect('lord_v200_brain.db')
     c = conn.cursor()
-    c.execute("SELECT balance FROM users WHERE id=?", (uid,))
-    user = c.fetchone()
-
+    
     if text == "🔑 API & Profil":
         c.execute("SELECT key FROM keys WHERE user_id=?", (uid,))
         res = c.fetchone()
@@ -155,18 +143,23 @@ async def msg_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             conn.commit()
             key = new_key
         else: key = res[0]
-        await update.message.reply_text(f"👤 **Lord Profil**\n\n🔑 Key: `{key}`\n🔗 API: `{BASE_URL}/api?key={key}&q=Merhaba`", 
-                                        parse_mode="Markdown", reply_markup=pro_markup())
+        await update.message.reply_text(f"🔑 Key: `{key}`\n🔗 API: `{BASE_URL}/api?key={key}&q=Merhaba`", 
+                                        parse_mode="Markdown", reply_markup=pro_buttons())
 
     elif not text.startswith("/"):
+        c.execute("SELECT balance FROM users WHERE id=?", (uid,))
+        user = c.fetchone()
         if user and user[0] > 0:
             c.execute("UPDATE users SET balance = balance - 1 WHERE id=?", (uid,))
             conn.commit()
+            
             await update.message.reply_chat_action("typing")
-            response = await singularity_ai_engine(text)
-            await update.message.reply_text(response, parse_mode="Markdown", reply_markup=pro_markup())
+            # GERÇEK ZAMANLI AI YANITI (CHATGPT GİBİ)
+            response = await get_real_ai_brain(text)
+            
+            await update.message.reply_text(response, parse_mode="Markdown", reply_markup=pro_buttons())
         else:
-            await update.message.reply_text("❌ Jetonunuz bitmiş Lord!")
+            await update.message.reply_text("❌ Jetonunuz bitti Lord!")
     conn.close()
 
 # --- 🚀 RUNNER ---
@@ -175,19 +168,19 @@ async def main():
     
     app_web = web.Application()
     app_web.router.add_get("/api", handle_api)
-    app_web.router.add_get("/", lambda r: web.Response(text="Lord Singularity Online"))
+    app_web.router.add_get("/", lambda r: web.Response(text="Lord V200 Brain Online"))
     runner = web.AppRunner(app_web)
     await runner.setup()
     await web.TCPSite(runner, "0.0.0.0", PORT).start()
 
-    application = Application.builder().token(TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, msg_handler))
+    app = Application.builder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, msg_handler))
 
-    async with application:
-        await application.initialize()
-        await application.start()
-        await application.updater.start_polling()
+    async with app:
+        await app.initialize()
+        await app.start()
+        await app.updater.start_polling()
         await asyncio.Event().wait()
 
 if __name__ == "__main__":
